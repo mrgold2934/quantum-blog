@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuantumBlog Ultra | Dynamic Social Engine</title>
+    <title>QuantumBlog Ultra | Cloud Connected Social Engine</title>
+    <!-- Include the Supabase CDN Client Library -->
+    <script src="https://jsdelivr.net"></script>
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -138,16 +140,6 @@
             margin-bottom: 1rem;
         }
 
-        .repost-tag {
-            display: inline-block;
-            font-size: 0.75rem;
-            background-color: var(--border);
-            color: var(--text-secondary);
-            padding: 0.2rem 0.5rem;
-            border-radius: 0.25rem;
-            margin-bottom: 0.5rem;
-        }
-
         .post-content {
             line-height: 1.6;
             color: var(--text-primary);
@@ -164,7 +156,6 @@
             border: 1px solid var(--border);
         }
 
-        /* Social Interactive Row */
         .social-bar {
             display: flex;
             flex-wrap: wrap;
@@ -191,11 +182,6 @@
             color: var(--text-primary);
         }
 
-        .social-btn.active-like { color: var(--heart); }
-        .social-btn.active-dislike { color: #f97316; }
-        .social-btn.active-repost { color: var(--green); }
-
-        /* Comment Engine Box */
         .comment-section {
             margin-top: 1rem;
             padding-top: 1rem;
@@ -237,17 +223,6 @@
             margin-bottom: 0.15rem;
         }
 
-        .admin-actions {
-            margin-top: 1rem;
-            display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
-        }
-
-        .btn-delete { background-color: #ef4444; }
-        .btn-delete:hover { background-color: #dc2626; }
-        .btn-edit { background-color: var(--border); color: var(--text-primary); }
-
         .empty-state {
             text-align: center;
             color: var(--text-secondary);
@@ -259,24 +234,22 @@
 
     <div class="container">
         <header>
-            <h1>QuantumBlog // Social Engine</h1>
-            <button class="theme-btn" onclick="toggleTheme()">模 Mode Toggle</button>
+            <h1>QuantumBlog // Global Cloud Engine</h1>
+            <button class="theme-btn" onclick="toggleTheme()">🌓 Toggle Mode</button>
         </header>
 
         <div class="grid">
-            <!-- Left Column: Social Feed -->
+            <!-- Left Column: Global Social Feed -->
             <main>
-                <h2>Live Social Feed</h2>
+                <h2>Live Global Social Feed</h2>
                 <div id="blog-feed" style="margin-top: 1rem;"></div>
             </main>
 
             <!-- Right Column: Dashboard Posting Control -->
             <aside>
                 <div class="card">
-                    <h3>Compose Article</h3>
+                    <h3>Broadcast to World</h3>
                     <form id="blog-form" onsubmit="handlePublish(event)" style="margin-top: 1rem;">
-                        <input type="hidden" id="post-id">
-                        
                         <div class="form-group">
                             <label for="title">Post Title</label>
                             <input type="text" id="title" required placeholder="What's breaking tech today?">
@@ -293,11 +266,11 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="media-file">Attach Gallery Media (Photo / Video)</label>
+                            <label for="media-file">Attach Compressed Image/Video (Max 1MB for Free Tier)</label>
                             <input type="file" id="media-file" accept="image/*,video/*">
                         </div>
                         
-                        <button type="submit" id="submit-btn" style="width: 100%;">Broadcast Post</button>
+                        <button type="submit" id="submit-btn" style="width: 100%;">Broadcast Post Globally</button>
                     </form>
                 </div>
             </aside>
@@ -305,238 +278,172 @@
     </div>
 
     <script>
-        // Core System Array Hydration
-        let posts = JSON.parse(localStorage.getItem('quantumblog_social_posts')) || [];
+        // REPLACE THESE WITH YOUR COPIED SUPABASE PROJECT CREDENTIALS
+        const SUPABASE_URL = "https://itifyjkjbcqsxfcuolrq.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_1S2XJVfaF96dVRmVwqqVMA_mHC_rd2b";
 
-        // Seed initial elegant mock profile post if empty
-        if (posts.length === 0) {
-            posts = [{
-                id: 'seed-1',
-                title: 'The Browser-Only Full-Stack Revolution',
-                author: '@QuantumArchitecture',
-                content: 'This card features an integrated system holding metrics for likes, dislikes, independent user text comment threads, and system repost replications running without database lag loops.',
-                media: null,
-                mediaType: null,
-                date: 'May 21, 2026',
-                likes: 42,
-                dislikes: 1,
-                reposts: 7,
-                comments: [{ author: '@TechInnovator', text: 'This single layout structure is brilliant!' }],
-                isReposted: false
-            }];
-            savePosts();
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let posts = [];
+
+        // Fetch Data from Global Serverless Cluster
+        async function fetchGlobalFeed() {
+            const { data, error } = await supabase
+                .from('posts')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Database connection failure:", error);
+                return;
+            }
+            posts = data || [];
+            renderFeed();
         }
 
-        // Render Dynamic Feed Loop
+        // Render Database Records to Viewport Layout
         function renderFeed() {
             const feed = document.getElementById('blog-feed');
             if (posts.length === 0) {
-                feed.innerHTML = '<div class="empty-state">No dynamic broadcasts available. Initiate the sequence!</div>';
+                feed.innerHTML = '<div class="empty-state">No dynamic broadcasts available. Initiate the global sequence!</div>';
                 return;
             }
 
             feed.innerHTML = posts.map(post => {
-                // Media Processor
                 let mediaHtml = '';
                 if (post.media) {
-                    if (post.mediaType.startsWith('image/')) {
-                        mediaHtml = `<div class="media-container"><img src="${post.media}" alt="Feed Media"></div>`;
-                    } else if (post.mediaType.startsWith('video/')) {
+                    if (post.media_type.startsWith('image/')) {
+                        mediaHtml = `<div class="media-container"><img src="${post.media}" alt="Global Media"></div>`;
+                    } else if (post.media_type.startsWith('video/')) {
                         mediaHtml = `<div class="media-container"><video src="${post.media}" controls></video></div>`;
                     }
                 }
 
-                // Comment String Generator
-                const commentsHtml = post.comments.map(c => `
+                let commentsList = [];
+                try {
+                    commentsList = typeof post.comments === 'string' ? JSON.parse(post.comments) : (post.comments || []);
+                } catch(e) { commentsList = []; }
+
+                const commentsHtml = commentsList.map(c => `
                     <div class="comment-item">
                         <div class="comment-author">${escapeHTML(c.author)}</div>
                         <div>${escapeHTML(c.text)}</div>
                     </div>
                 `).join('');
 
+                const dateString = new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
                 return `
                     <article class="card" id="post-${post.id}">
-                        ${post.isReposted ? `<div class="repost-tag">🔄 Reposted Thread</div>` : ''}
                         <h2>${escapeHTML(post.title)}</h2>
-                        <div class="post-meta">Broadcast by <strong>${escapeHTML(post.author)}</strong> on ${post.date}</div>
+                        <div class="post-meta">Broadcast by <strong>${escapeHTML(post.author)}</strong> on ${dateString}</div>
                         <div class="post-content">${escapeHTML(post.content)}</div>
                         
                         ${mediaHtml}
 
-                        <!-- Dynamic Interactions Bar -->
+                        <!-- Dynamic Cloud Interactions -->
                         <div class="social-bar">
-                            <button class="social-btn" onclick="interact('${post.id}', 'like')">
+                            <button class="social-btn" onclick="interact('${post.id}', 'like', ${post.likes || 0})">
                                 👍 <span>${post.likes || 0}</span>
                             </button>
-                            <button class="social-btn" onclick="interact('${post.id}', 'dislike')">
+                            <button class="social-btn" onclick="interact('${post.id}', 'dislike', ${post.dislikes || 0})">
                                 👎 <span>${post.dislikes || 0}</span>
-                            </button>
-                            <button class="social-btn" onclick="interact('${post.id}', 'repost')">
-                                🔄 <span>${post.reposts || 0}</span>
                             </button>
                         </div>
 
-                        <!-- Localized Component Comment Thread -->
+                        <!-- Real-time Nested Global Comments -->
                         <div class="comment-section">
                             <form class="comment-form" onsubmit="addComment(event, '${post.id}')">
-                                <input type="text" placeholder="Write an anonymous comment..." required class="comment-input">
+                                <input type="text" placeholder="Write a global comment..." required class="comment-input">
                                 <button type="submit" style="padding: 0.4rem 1rem;">Reply</button>
                             </form>
                             <div class="comment-list">${commentsHtml}</div>
-                        </div>
-
-                        <!-- Content Operations Management -->
-                        <div class="admin-actions">
-                            <button class="btn-edit" onclick="editPost('${post.id}')">Modify Text</button>
-                            <button class="btn-delete" onclick="deletePost('${post.id}')">Delete</button>
                         </div>
                     </article>
                 `;
             }).join('');
         }
 
-        // Broadcaster Form Handler
+        // Form Submit Handler
         function handlePublish(e) {
             e.preventDefault();
-            const idInput = document.getElementById('post-id').value;
             const title = document.getElementById('title').value;
             const author = document.getElementById('author').value;
             const content = document.getElementById('content').value;
             const fileInput = document.getElementById('media-file');
-            const file = fileInput.files[0];
+            const file = fileInput.files;
 
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(event) {
-                    executeSave(idInput, title, author, content, event.target.result, file.type);
+                reader.onload = async function(event) {
+                    await sendToCloud(title, author, content, event.target.result, file.type);
                 };
                 reader.readAsDataURL(file);
             } else {
-                let existingMedia = null;
-                let existingMediaType = null;
-                if (idInput) {
-                    const oldPost = posts.find(p => p.id === idInput);
-                    if (oldPost) {
-                        existingMedia = oldPost.media;
-                        existingMediaType = oldPost.mediaType;
-                    }
-                }
-                executeSave(idInput, title, author, content, existingMedia, existingMediaType);
+                sendToCloud(title, author, content, null, null);
             }
         }
 
-        // Database Injection Save Controller
-        function executeSave(id, title, author, content, mediaData, mediaType) {
-            if (id) {
-                const index = posts.findIndex(p => p.id === id);
-                if (index !== -1) {
-                    posts[index].title = title;
-                    posts[index].author = author;
-                    posts[index].content = content;
-                    posts[index].media = mediaData;
-                    posts[index].mediaType = mediaType;
-                }
+        // Send Captured Package to Cloud Architecture
+        async function sendToCloud(title, author, content, mediaData, mediaType) {
+            const newPost = {
+                id: 'post-' + Date.now().toString() + '-' + Math.random().toString(36).substr(2, 5),
+                title: title,
+                author: author,
+                content: content,
+                media: mediaData,
+                media_type: mediaType,
+                likes: 0,
+                dislikes: 0,
+                reposts: 0,
+                comments: []
+            };
+
+            const { error } = await supabase.from('posts').insert([newPost]);
+            if (error) {
+                alert("Cloud submission error. Keep file sizes small!");
+                console.error(error);
             } else {
-                const newPost = {
-                    id: 'post-' + Date.now().toString(),
-                    title: title,
-                    author: author,
-                    content: content,
-                    media: mediaData,
-                    mediaType: mediaType,
-                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    likes: 0,
-                    dislikes: 0,
-                    reposts: 0,
-                    comments: [],
-                    isReposted: false
-                };
-                posts.unshift(newPost);
-            }
-
-            try {
-                savePosts();
-                renderFeed();
                 resetForm();
-            } catch (err) {
-                alert("Storage Overflow: Image file sizes are too large for localized engine structures. Try a compressed image file.");
+                await fetchGlobalFeed();
             }
         }
 
-        // Interactions Tracking Logic Module
-        function interact(id, action) {
-            const index = posts.findIndex(p => p.id === id);
-            if (index === -1) return;
+        // Update Cloud Counter States
+        async function interact(id, action, currentVal) {
+            const updateData = {};
+            updateData[action === 'like' ? 'likes' : 'dislikes'] = currentVal + 1;
 
-            if (action === 'like') posts[index].likes = (posts[index].likes || 0) + 1;
-            if (action === 'dislike') posts[index].dislikes = (posts[index].dislikes || 0) + 1;
-            
-            if (action === 'repost') {
-                posts[index].reposts = (posts[index].reposts || 0) + 1;
-                // Create a clone item and inject back to feed layout 
-                const clonedRepost = {
-                    ...posts[index],
-                    id: 'repost-' + Date.now().toString(),
-                    isReposted: true,
-                    likes: 0,
-                    dislikes: 0,
-                    reposts: 0,
-                    comments: []
-                };
-                posts.unshift(clonedRepost);
-            }
-
-            savePosts();
-            renderFeed();
+            const { error } = await supabase.from('posts').update(updateData).eq('id', id);
+            if (!error) await fetchGlobalFeed();
         }
 
-        // Dynamic Comments Module
-        function addComment(e, postId) {
+        // Append Global Nested Comments String
+        async function addComment(e, postId) {
             e.preventDefault();
             const form = e.target;
             const input = form.querySelector('.comment-input');
             const commentText = input.value.trim();
-            
-            const index = posts.findIndex(p => p.id === postId);
-            if (index === -1 || !commentText) return;
+            if (!commentText) return;
 
-            posts[index].comments.push({
-                author: '@AnonymousUser',
-                text: commentText
-            });
-
-            savePosts();
-            renderFeed();
-            input.value = '';
-        }
-
-        // System Configuration Tools
-        function editPost(id) {
-            const post = posts.find(p => p.id === id);
+            const post = posts.find(p => p.id === postId);
             if (!post) return;
-            document.getElementById('post-id').value = post.id;
-            document.getElementById('title').value = post.title;
-            document.getElementById('author').value = post.author;
-            document.getElementById('content').value = post.content;
-            document.getElementById('submit-btn').innerText = 'Modify Broadcast';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
 
-        function deletePost(id) {
-            if (confirm('Permanently wipe this entry record?')) {
-                posts = posts.filter(p => p.id !== id);
-                savePosts();
-                renderFeed();
-                resetForm();
+            let currentComments = [];
+            try {
+                currentComments = typeof post.comments === 'string' ? JSON.parse(post.comments) : (post.comments || []);
+            } catch(err) { currentComments = []; }
+
+            currentComments.push({ author: '@GlobalReader', text: commentText });
+
+            const { error } = await supabase.from('posts').update({ comments: currentComments }).eq('id', postId);
+            if (!error) {
+                input.value = '';
+                await fetchGlobalFeed();
             }
         }
 
-        function savePosts() { localStorage.setItem('quantumblog_social_posts', JSON.stringify(posts)); }
-        function resetForm() {
-            document.getElementById('blog-form').reset();
-            document.getElementById('post-id').value = '';
-            document.getElementById('submit-btn').innerText = 'Broadcast Post';
-        }
+        // Auxiliary Control Scripts
+        function resetForm() { document.getElementById('blog-form').reset(); }
         function escapeHTML(str) {
             return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t));
         }
@@ -549,7 +456,10 @@
 
         const savedTheme = localStorage.getItem('quantumblog_social_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
-        renderFeed();
+        
+        // Polling loop to fetch new logs automatically every 5 seconds
+        fetchGlobalFeed();
+        setInterval(fetchGlobalFeed, 5000);
     </script>
 </body>
 </html>
