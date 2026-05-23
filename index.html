@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuantumBlog Global Feed</title>
-    <!-- Stable direct library link -->
     <script src="https://jsdelivr.net"></script>
     <style>
         :root {
@@ -49,6 +48,7 @@
             <h1>QuantumBlog // Global Cloud Engine</h1>
         </header>
 
+        <!-- Status display alert container -->
         <div id="status-display" class="status-box"></div>
 
         <div class="grid">
@@ -84,7 +84,8 @@
 
     <script>
         const SUPABASE_URL = "https://itifyjkjbcqsxfcuolrq.supabase.co";
-        // ⚠️ PASTE YOUR ENTIRE EXTRA-LONG ANON KEY BETWEEN THESE QUOTES BELOW:
+        
+        // ⚠️ VITAL: MAKE SURE YOUR TOTAL LONG ANON KEY IS INSIDE THESE QUOTES:
         const SUPABASE_ANON_KEY = "sb_publishable_1S2XJVfaF96dVRmVwqqVMA_mHC_rd2b"; 
 
         let supabaseCtx = null;
@@ -103,31 +104,41 @@
 
         function initSystem() {
             if (!window.supabase) {
-                showStatus("<strong>🚫 CDN Link Blocked:</strong> The database library failed to load. Check your internet connection or disable firewalls.", true);
+                showStatus("<strong>🚫 Library Error:</strong> The Supabase file completely failed to download to your computer. Try using a mobile network hotspot.", true);
                 return false;
             }
             if (SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY" || SUPABASE_ANON_KEY.trim() === "") {
-                showStatus("<strong>🔑 Key Missing:</strong> You forgot to paste your long Supabase anon key on line 100 of the code!", true);
+                showStatus("<strong>🔑 Key Missing:</strong> You forgot to paste your long Supabase anon key string into line 101 of your code file!", true);
                 return false;
             }
             try {
                 supabaseCtx = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 return true;
             } catch (err) {
-                showStatus("Setup Error: " + err.message, true);
+                showStatus("<strong>⚠️ Client Crash:</strong> " + err.message, true);
                 return false;
             }
         }
 
         async function fetchFeed() {
             if (!supabaseCtx) return;
-            const response = await supabaseCtx.from('posts').select('*').order('created_at', { ascending: false });
-            if (response.error) {
-                showStatus("<strong>❌ Database Error:</strong> " + response.error.message + "<br>Ensure you clicked 'Run' inside the Supabase SQL Editor panel.", true);
-                return;
+            
+            // Added defensive wrapper block to visually catch any secret network response rejections
+            try {
+                const response = await supabaseCtx.from('posts').select('*').order('created_at', { ascending: false });
+                
+                if (response.error) {
+                    showStatus("<strong>❌ Database Configuration Error:</strong> " + response.error.message + "<br><br><em>Action Required: Ensure you successfully hit the green 'Run' button inside your Supabase SQL window!</em>", true);
+                    return;
+                }
+                
+                // Clear any error alert window upon successful download connection
+                document.getElementById('status-display').style.display = 'none';
+                globalPosts = response.data || [];
+                renderUI();
+            } catch (crashError) {
+                showStatus("<strong>💥 Critical Network Crash:</strong> The API key you pasted is broken or formatted incorrectly. Re-copy the exact 'anon/public' key from Supabase settings.", true);
             }
-            globalPosts = response.data || [];
-            renderUI();
         }
 
         function renderUI() {
@@ -140,12 +151,12 @@
             let html = '';
             for (let i = 0; i < globalPosts.length; i++) {
                 let p = globalPosts[i];
-                let cList = [];
-                try { cList = typeof p.comments === 'string' ? JSON.parse(p.comments) : (p.comments || []); } catch(e) { cList = []; }
+                let list = [];
+                try { list = typeof p.comments === 'string' ? JSON.parse(p.comments) : (p.comments || []); } catch(e) { list = []; }
 
                 let cHtml = '';
-                for (let j = 0; j < cList.length; j++) {
-                    cHtml += '<div class="comment-item"><div class="comment-author">' + cleanText(cList[j].author) + '</div><div>' + cleanText(cList[j].text) + '</div></div>';
+                for (let j = 0; j < list.length; j++) {
+                    cHtml += '<div class="comment-item"><div class="comment-author">' + cleanText(list[j].author) + '</div><div>' + cleanText(list[j].text) + '</div></div>';
                 }
 
                 html += '<article class="card">' +
@@ -170,22 +181,3 @@
 
         async function handlePublish(e) {
             e.preventDefault();
-            if (!supabaseCtx) return;
-            
-            const title = document.getElementById('title').value;
-            const author = document.getElementById('author').value;
-            const content = document.getElementById('id-content').value;
-
-            const record = {
-                id: 'p-' + Date.now() + '-' + Math.random().toString(36).substr(2,4),
-                title: title,
-                author: author,
-                content: content,
-                likes: 0,
-                dislikes: 0,
-                comments: []
-            };
-
-            const res = await supabaseCtx.from('posts').insert([record]);
-            if (res.error) {
-                alert("Error saving: " + res.error.message);
