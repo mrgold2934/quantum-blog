@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuantumBlog Ultra | Cloud Connected Social Engine</title>
-    <!-- Include the Supabase CDN Client Library -->
-    <script src="https://jsdelivr.net"></script>
+    <!-- SWAPPED CDN LINK: Loading from Unpkg to fix the ERR_CONNECTION_TIMED_OUT issue -->
+    <script src="https://unpkg.com"></script>
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -279,14 +279,19 @@
 
     <script>
         // REPLACE THESE WITH YOUR COPIED SUPABASE PROJECT CREDENTIALS
-        const SUPABASE_URL = "https://itifyjkjbcqsxfcuolrq.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_1S2XJVfaF96dVRmVwqqVMA_mHC_rd2b";
+        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_1S2XJVfaF96dVRmVwqqVMA_mHC_rd2b; // <-- Paste your extremely long anon key inside these quotes!
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabase;
         let posts = [];
 
-        // Fetch Data from Global Serverless Cluster
+        // Check if library loaded successfully
+        if (typeof supabase === 'undefined' && window.supabase) {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
         async function fetchGlobalFeed() {
+            if (!supabase) return;
             const { data, error } = await supabase
                 .from('posts')
                 .select('*')
@@ -300,7 +305,6 @@
             renderFeed();
         }
 
-        // Render Database Records to Viewport Layout
         function renderFeed() {
             const feed = document.getElementById('blog-feed');
             if (posts.length === 0) {
@@ -313,153 +317,3 @@
                 if (post.media) {
                     if (post.media_type.startsWith('image/')) {
                         mediaHtml = `<div class="media-container"><img src="${post.media}" alt="Global Media"></div>`;
-                    } else if (post.media_type.startsWith('video/')) {
-                        mediaHtml = `<div class="media-container"><video src="${post.media}" controls></video></div>`;
-                    }
-                }
-
-                let commentsList = [];
-                try {
-                    commentsList = typeof post.comments === 'string' ? JSON.parse(post.comments) : (post.comments || []);
-                } catch(e) { commentsList = []; }
-
-                const commentsHtml = commentsList.map(c => `
-                    <div class="comment-item">
-                        <div class="comment-author">${escapeHTML(c.author)}</div>
-                        <div>${escapeHTML(c.text)}</div>
-                    </div>
-                `).join('');
-
-                const dateString = new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-                return `
-                    <article class="card" id="post-${post.id}">
-                        <h2>${escapeHTML(post.title)}</h2>
-                        <div class="post-meta">Broadcast by <strong>${escapeHTML(post.author)}</strong> on ${dateString}</div>
-                        <div class="post-content">${escapeHTML(post.content)}</div>
-                        
-                        ${mediaHtml}
-
-                        <!-- Dynamic Cloud Interactions -->
-                        <div class="social-bar">
-                            <button class="social-btn" onclick="interact('${post.id}', 'like', ${post.likes || 0})">
-                                👍 <span>${post.likes || 0}</span>
-                            </button>
-                            <button class="social-btn" onclick="interact('${post.id}', 'dislike', ${post.dislikes || 0})">
-                                👎 <span>${post.dislikes || 0}</span>
-                            </button>
-                        </div>
-
-                        <!-- Real-time Nested Global Comments -->
-                        <div class="comment-section">
-                            <form class="comment-form" onsubmit="addComment(event, '${post.id}')">
-                                <input type="text" placeholder="Write a global comment..." required class="comment-input">
-                                <button type="submit" style="padding: 0.4rem 1rem;">Reply</button>
-                            </form>
-                            <div class="comment-list">${commentsHtml}</div>
-                        </div>
-                    </article>
-                `;
-            }).join('');
-        }
-
-        // Form Submit Handler
-        function handlePublish(e) {
-            e.preventDefault();
-            const title = document.getElementById('title').value;
-            const author = document.getElementById('author').value;
-            const content = document.getElementById('content').value;
-            const fileInput = document.getElementById('media-file');
-            const file = fileInput.files;
-
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = async function(event) {
-                    await sendToCloud(title, author, content, event.target.result, file.type);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                sendToCloud(title, author, content, null, null);
-            }
-        }
-
-        // Send Captured Package to Cloud Architecture
-        async function sendToCloud(title, author, content, mediaData, mediaType) {
-            const newPost = {
-                id: 'post-' + Date.now().toString() + '-' + Math.random().toString(36).substr(2, 5),
-                title: title,
-                author: author,
-                content: content,
-                media: mediaData,
-                media_type: mediaType,
-                likes: 0,
-                dislikes: 0,
-                reposts: 0,
-                comments: []
-            };
-
-            const { error } = await supabase.from('posts').insert([newPost]);
-            if (error) {
-                alert("Cloud submission error. Keep file sizes small!");
-                console.error(error);
-            } else {
-                resetForm();
-                await fetchGlobalFeed();
-            }
-        }
-
-        // Update Cloud Counter States
-        async function interact(id, action, currentVal) {
-            const updateData = {};
-            updateData[action === 'like' ? 'likes' : 'dislikes'] = currentVal + 1;
-
-            const { error } = await supabase.from('posts').update(updateData).eq('id', id);
-            if (!error) await fetchGlobalFeed();
-        }
-
-        // Append Global Nested Comments String
-        async function addComment(e, postId) {
-            e.preventDefault();
-            const form = e.target;
-            const input = form.querySelector('.comment-input');
-            const commentText = input.value.trim();
-            if (!commentText) return;
-
-            const post = posts.find(p => p.id === postId);
-            if (!post) return;
-
-            let currentComments = [];
-            try {
-                currentComments = typeof post.comments === 'string' ? JSON.parse(post.comments) : (post.comments || []);
-            } catch(err) { currentComments = []; }
-
-            currentComments.push({ author: '@GlobalReader', text: commentText });
-
-            const { error } = await supabase.from('posts').update({ comments: currentComments }).eq('id', postId);
-            if (!error) {
-                input.value = '';
-                await fetchGlobalFeed();
-            }
-        }
-
-        // Auxiliary Control Scripts
-        function resetForm() { document.getElementById('blog-form').reset(); }
-        function escapeHTML(str) {
-            return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t));
-        }
-        function toggleTheme() {
-            const current = document.documentElement.getAttribute('data-theme');
-            const target = current === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', target);
-            localStorage.setItem('quantumblog_social_theme', target);
-        }
-
-        const savedTheme = localStorage.getItem('quantumblog_social_theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        
-        // Polling loop to fetch new logs automatically every 5 seconds
-        fetchGlobalFeed();
-        setInterval(fetchGlobalFeed, 5000);
-    </script>
-</body>
-</html>
