@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuantumBlog Ultra | Cloud Connected Social Engine</title>
-    <!-- SWAPPED CDN LINK: Loading from Unpkg to fix the ERR_CONNECTION_TIMED_OUT issue -->
     <script src="https://unpkg.com"></script>
     <style>
         :root {
@@ -16,7 +15,6 @@
             --accent-hover: #0ea5e9;
             --border: #334155;
             --heart: #ef4444;
-            --green: #22c55e;
         }
 
         [data-theme="light"] {
@@ -278,30 +276,23 @@
     </div>
 
     <script>
-        // REPLACE THESE WITH YOUR COPIED SUPABASE PROJECT CREDENTIALS
-        const SUPABASE_URL = "https://supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_1S2XJVfaF96dVRmVwqqVMA_mHC_rd2b; // <-- Paste your extremely long anon key inside these quotes!
+        const SUPABASE_URL = "https://itifyjkjbcqsxfcuolrq.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_1S2XJVfaF96dVRmVwqqVMA_mHC_rd2b"; // <-- PASTE YOUR LONG ANON KEY HERE
 
-        let supabase;
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let posts = [];
 
-        // Check if library loaded successfully
-        if (typeof supabase === 'undefined' && window.supabase) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-
         async function fetchGlobalFeed() {
-            if (!supabase) return;
-            const { data, error } = await supabase
+            const response = await supabase
                 .from('posts')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error("Database connection failure:", error);
+            if (response.error) {
+                console.error("Database connection failure:", response.error);
                 return;
             }
-            posts = data || [];
+            posts = response.data || [];
             renderFeed();
         }
 
@@ -312,8 +303,17 @@
                 return;
             }
 
-            feed.innerHTML = posts.map(post => {
+            let htmlString = '';
+            for (let i = 0; i < posts.length; i++) {
+                let post = posts[i];
                 let mediaHtml = '';
+                
                 if (post.media) {
-                    if (post.media_type.startsWith('image/')) {
-                        mediaHtml = `<div class="media-container"><img src="${post.media}" alt="Global Media"></div>`;
+                    if (post.media_type.indexOf('image/') === 0) {
+                        mediaHtml = '<div class="media-container"><img src="' + post.media + '" alt="Global Media"></div>';
+                    } else if (post.media_type.indexOf('video/') === 0) {
+                        mediaHtml = '<div class="media-container"><video src="' + post.media + '" controls></video></div>';
+                    }
+                }
+
+                let commentsList = [];
