@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuantumBlog Ultra | Cloud Connected Social Engine</title>
-    <script src="https://unpkg.com"></script>
+    <!-- Fallback CDN links to ensure the database script loads successfully -->
+    <script src="https://cloudflare.com"></script>
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -226,6 +227,17 @@
             color: var(--text-secondary);
             padding: 3rem 0;
         }
+
+        .error-shield {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -276,44 +288,25 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://itifyjkjbcqsxfcuolrq.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_1S2XJVfaF96dVRmVwqqVMA_mHC_rd2b"; // <-- PASTE YOUR LONG ANON KEY HERE
+        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // <-- PASTE YOUR LONG ANON KEY HERE
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabase = null;
         let posts = [];
 
-        async function fetchGlobalFeed() {
-            const response = await supabase
-                .from('posts')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (response.error) {
-                console.error("Database connection failure:", response.error);
-                return;
-            }
-            posts = response.data || [];
-            renderFeed();
-        }
-
-        function renderFeed() {
+        function initSupabase() {
             const feed = document.getElementById('blog-feed');
-            if (posts.length === 0) {
-                feed.innerHTML = '<div class="empty-state">No dynamic broadcasts available. Initiate the global sequence!</div>';
-                return;
+            
+            // Check if CDN loaded correctly
+            if (!window.supabase) {
+                feed.innerHTML = '<div class="error-shield"><strong>🚫 Network Error:</strong> The Supabase database script failed to load. Your internet or regional firewall is blocking the connection. Please try refreshing or checking your network connection.</div>';
+                return false;
             }
 
-            let htmlString = '';
-            for (let i = 0; i < posts.length; i++) {
-                let post = posts[i];
-                let mediaHtml = '';
-                
-                if (post.media) {
-                    if (post.media_type.indexOf('image/') === 0) {
-                        mediaHtml = '<div class="media-container"><img src="' + post.media + '" alt="Global Media"></div>';
-                    } else if (post.media_type.indexOf('video/') === 0) {
-                        mediaHtml = '<div class="media-container"><video src="' + post.media + '" controls></video></div>';
-                    }
-                }
+            // Check if user forgot to replace placeholder key
+            if (SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY" || SUPABASE_ANON_KEY.trim() === "") {
+                feed.innerHTML = '<div class="error-shield"><strong>🔑 Key Missing:</strong> You forgot to paste your Supabase public anon key on line 215 of the code. Open GitHub, edit the file, and replace "YOUR_SUPABASE_ANON_KEY" with your real key!</div>';
+                return false;
+            }
 
-                let commentsList = [];
+            try {
